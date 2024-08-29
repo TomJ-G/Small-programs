@@ -42,7 +42,7 @@ def process_data(path):
     
     Returns: 
     - wavelength: NumPy array of the first column (index)
-    - reflectance: NumPy array of the last column (data)
+    - value: NumPy array of the last column (data)
     """
     with open(path, 'r', encoding='utf-8') as f:
         data = f.readlines()
@@ -79,11 +79,11 @@ def process_data(path):
         # Extract the data rows starting from the first row with numerical values
         raw_data = processed_lines[num_start:].astype(float)
     
-    # Assume first column is wavelength and last one is reflectance
+    # Assume first column is wavelength and last one is value
     wavelength = raw_data[:, 0]  # First column
-    reflectance = raw_data[:, -1]  # Last column
+    rvalue = raw_data[:, -1]  # Last column
 
-    return ((headers[0],wavelength), (headers[-1],reflectance))
+    return ((headers[0],wavelength), (headers[-1],rvalue))
 
 
 class App(QWidget):
@@ -149,7 +149,7 @@ class App(QWidget):
         select_layout.SetMaximumSize = [20,20]
         self.input_x1 = QLineEdit()
         self.input_x2 = QLineEdit()
-        self.label_diff = QLabel('Reflectance: ----')
+        self.label_diff = QLabel('Value: ----')
         select_layout.addWidget(QLabel('X1:'))
         select_layout.addWidget(self.input_x1)
         select_layout.addWidget(QLabel('X2:'))
@@ -166,15 +166,15 @@ class App(QWidget):
         self.save_btn.clicked.connect(self.save_diff_to_file)
         btn_below_layout.addWidget(self.save_btn)
 
-        # Calculate reflectance
-        self.calc_ref = QPushButton('Calculate refl.')
-        self.calc_ref.clicked.connect(self.get_reflectance)
-        btn_below_layout.addWidget(self.calc_ref)
+        # Calculate value
+        self.calc_val = QPushButton('Calculate val.')
+        self.calc_val.clicked.connect(self.get_value)
+        btn_below_layout.addWidget(self.calc_val)
 
-        # Save reflectance data
-        self.save_refl = QPushButton('Save reflectance')
-        self.save_refl.clicked.connect(self.save_refl_to_file)
-        btn_below_layout.addWidget(self.save_refl)
+        # Save value data
+        self.save_val = QPushButton('Save values')
+        self.save_val.clicked.connect(self.save_val_to_file)
+        btn_below_layout.addWidget(self.save_val)
 
         # Add button layout to main layout
         layout.addLayout(btn_below_layout)
@@ -187,9 +187,9 @@ class App(QWidget):
         self.stored = None
         self.x_range = [None,None]
         self.line_eq = None
-        self.reflectance = None
+        self.value = None
         self.i_line = None
-        self.df_reflectance = None
+        self.df_value = None
         self.index_name = None
         self.column_name = None
 
@@ -227,7 +227,7 @@ class App(QWidget):
 
 
     def draw_line_intensities(self,x):
-        """Draws a line for highest reflectance."""
+        """Draws a line for highest value."""
         
         # Clear the previous line if it exists
         if self.i_line:
@@ -249,8 +249,8 @@ class App(QWidget):
         return(a,b)
 
 
-    def get_reflectance(self):
-        """Calculates the reflectance with line method"""
+    def get_value(self):
+        """Calculates the value with line method"""
         if self.line_eq:
             values = []
             a, b = self.line_eq
@@ -263,17 +263,17 @@ class App(QWidget):
                 y_signal = self.df_diff[1][i]
                 values.append(y_line-y_signal)
                 temp.append([self.df_diff[0][i],values[-1]])
-            self.df_reflectance = temp.copy()
-            self.reflectance = max(values)
+            self.df_value = temp.copy()
+            self.value = max(values)
             
-            # Draw line where reflectance was calculated
+            # Draw line where value was calculated
             n = argmax(values)
-            self.draw_line_intensities(self.df_reflectance[n][0])
+            self.draw_line_intensities(self.df_value[n][0])
             
             try:
-                self.label_diff.setText(f'Reflectance: {round(self.reflectance,4)}')
+                self.label_diff.setText(f'Value: {round(self.value,4)}')
             except Exception as e:
-                self.label_diff.setText('Reflectance: ----')
+                self.label_diff.setText('Value: ----')
 
 
     def load_file1(self):
@@ -340,7 +340,7 @@ class App(QWidget):
     def smooth(self):
         """Smooths the function with Savitzky-Golay filter."""
         if self.stored:
-            # Apply Savitzky-Golay filter on the second column (reflectance) of stored array
+            # Apply Savitzky-Golay filter on the second column (value) of stored array
             smoothed_values = savgol_filter(self.stored[1], self.sawgol_window.value(), 2)
             # Combine the original index (wavelength) and smoothed values into df_diff
             self.df_diff[1] = smoothed_values
@@ -377,9 +377,9 @@ class App(QWidget):
         return peak_x_values[idx], peak_y_values[idx]
 
 
-    def save_refl_to_file(self):
-        """Saves only the reflectance to file"""
-        if self.reflectance:
+    def save_val_to_file(self):
+        """Saves only the value to file"""
+        if self.value:
             file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt);;All Files (*)")
             if file_path:
                 with open(file_path, 'w', encoding='utf-8') as f:
@@ -387,12 +387,12 @@ class App(QWidget):
                     n2,u2 = self.column_name.split(' ')
                     f.write(f"{n1}   ;{n2}\n")
                     f.write(f"{u1}   ;{u2}\n")
-                    for i in self.df_reflectance:
+                    for i in self.df_value:
                         f.write(f"{i[0]:.6f};{i[1]:.6f}\n")
 
 
     def save_diff_to_file(self):
-        """Saves the reflectance data to a text file with the specified header."""
+        """Saves the value data to a text file with the specified header."""
         if self.df_diff != None:
             file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt);;All Files (*)")
             if file_path:
